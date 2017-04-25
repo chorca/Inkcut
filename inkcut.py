@@ -81,7 +81,7 @@ class Application():
         self._windows = {}
         # ========== End of block ====================================
         self._widgets = {}
-        
+
     def add_window(self,window,name=None):
         """ Adds a window to the Application """
         if name is None:
@@ -106,7 +106,7 @@ class Application():
             self._widgets[group]={}
         if widget:
             self._widgets[group][name] = widget
-        
+
     def get_widget(self,group,name):
         """ Retrieves widget from widget group """
         return self._widgets[group][name]
@@ -115,7 +115,7 @@ class Application():
         """ Retrieves all widgets from group """
         assert group in self._widgets.keys(), "There is no widget group: %s" % group
         return self._widgets[group]
-    
+
     # Builder Helpers
     @staticmethod
     def set_adjustment_values(builder,etree):
@@ -154,7 +154,7 @@ def callback(fn):
     Catches errors and sends them to a UI message window.
     """
     def wrapped(self,*args):
-        
+
         msg = "callback: %s, blocked: %s"%(fn.__name__,self._flags['block_callbacks'])
         print msg
         log.debug(msg)
@@ -176,17 +176,17 @@ def callback(fn):
             msg.destroy()
         """
     return wrapped
-                
+
 class Inkcut(Application):
     """
-    Inkcut application, creates inkcut.ui and controls job, material, 
+    Inkcut application, creates inkcut.ui and controls job, material,
     and device interaction.
     """
-    
+
     def __init__(self):
         """Load initial application settings from database """
         Application.__init__(self)
-        
+
         # setup the database session
         database = 'sqlite:///%s'%os.path.join(APP_DIR,config.get('Inkcut','database_dir'),config.get('Inkcut','database_name'))
         log.info("Database: %s"%database)
@@ -195,21 +195,21 @@ class Inkcut(Application):
         self.session = Session()
         self.job = None
         self._flags = {'block_callbacks':True}
-    
+
     # Builds the Inkcut user interface when Inkcut.run() is called
     def run(self, filename=None):
         builder = Gtk.Builder()
         builder.add_from_file(os.path.join(APP_DIR,'ui','inkcut.ui'))
         window = builder.get_object('inkcut')
-            
+
         # Save any widgets needed later into groups
         self.add_widgets(builder,'job-dependent',['toolbutton3','toolbutton5','toolbutton6','box21','box9','box11','box3','box15','box25','box28','plot-order','box17','menu-file-print-preview','menu-file-print','menu-edit-undo','menu-edit-redo','gtk-zoom-fit','gtk-zoom-in','gtk-zoom-out','menu-file-save-as','menu-file-save'])
         self.add_widgets(builder,'inkcut',['inkcut','devices','statusbar','preview','scale-lock-box','scale-x-label','spinner'])
         self.add_widgets(builder,'graphic-properties',['graphic-width','graphic-height','graphic-scale-x','graphic-scale-y','graphic-scale-lock','graphic-rotation','graphic-rotate-to-save','graphic-weedline-enable','graphic-weedline-padding'])
         self.add_widgets(builder,'plot-properties',['plot-width','plot-height','plot-copies','plot-weedline-enable','plot-weedline-padding','plot-col-spacing','plot-row-spacing','plot-position-x','plot-position-y','plot-feed','plot-feed-distance'])
         self.add_widgets(builder,'material',['materials'])
-        
-        
+
+
         # Connect signals and invoke any UI setup
         builder.connect_signals(self)
 
@@ -234,10 +234,10 @@ class Inkcut(Application):
         combobox.set_model(materials)
         cell = Gtk.CellRendererText()
         combobox.pack_start(cell, True)
-        combobox.add_attribute(cell, 'text', 1)  
+        combobox.add_attribute(cell, 'text', 1)
         combobox.set_active(active)
 
-        
+
         model = []
         device_active_index = 0
         for device in Device.get_printers():
@@ -246,13 +246,13 @@ class Inkcut(Application):
                 name += " (default)"
                 device_active_index = len(model)
             model.append(name)
-            log.info(name) 
+            log.info(name)
         combobox = builder.get_object('devices')
         self.set_model_from_list(combobox,model)
         combobox.set_active(device_active_index)
-        
-        
-        
+
+
+
         # Init Accelerators
         accel_group = builder.get_object('accelgroup1')
         for action in builder.get_object('actiongroup1').list_actions():
@@ -264,7 +264,7 @@ class Inkcut(Application):
         self._update_sensitivity()
         window.show_all()
         self.flash("",indicator=False)
-        
+
         # Fix!
         self._flags['block_callbacks']=False
         self.add_window(window,'inkcut')
@@ -272,7 +272,7 @@ class Inkcut(Application):
         # From command line arguments
         if filename is not None and os.path.isfile(filename):
             self.create_job(filename)
-            
+
         Gtk.main()
 
     # ===================================== Plot Callbacks ===============================================
@@ -284,7 +284,7 @@ class Inkcut(Application):
             d = self.unit_to(self.get_widget('plot-properties','plot-feed-distance').get_value())
             pos = (0,d)
             if self.job.plot.get_rotation() == 90:
-                pos = (d,0) 
+                pos = (d,0)
             self.job.set_property('plot','finish_position',pos)
         else:
             self.job.set_property('plot','finish_position',(0,0))
@@ -297,7 +297,7 @@ class Inkcut(Application):
         self.flash("Setting the number of copies to %s..."%n,indicator=True)
         GObject.idle_add(self.job.plot.set_copies,n)
         GObject.idle_add(self._update_preview)
-        
+
     @callback
     def on_stack_reset_activated(self,button, data=None):
         """Sets the graphic-copies to 1"""
@@ -332,7 +332,7 @@ class Inkcut(Application):
             msg = "Saving the plot row spacing..."
         self.flash(msg,indicator=True)
         GObject.idle_add(self.job.plot.set_spacing,None,y)
-        GObject.idle_add(self._update_preview)        
+        GObject.idle_add(self._update_preview)
 
     @callback
     def on_plot_position_x_changed(self,widget,data=None):
@@ -392,7 +392,7 @@ class Inkcut(Application):
         self.flash(msg,indicator=True)
         GObject.idle_add(self.job.plot.set_weedline_padding,self.unit_to(adjustment.get_value()))
         GObject.idle_add(self._update_preview)
-    
+
     # ===================================== Graphic Callbacks ===============================================
     @callback
     def on_graphic_width_changed(self,adjustment,data=None):
@@ -403,7 +403,7 @@ class Inkcut(Application):
         sx = new_w/cur_w*sx
         # Updated in on_graphic_scale_x_changed callback
         self.get_widget('graphic-properties','graphic-scale-x').set_value(sx)
-        
+
     @callback
     def on_graphic_height_changed(self,adjustment,data=None):
         # Calculate new scale
@@ -423,7 +423,7 @@ class Inkcut(Application):
             sx = self.get_widget('graphic-properties','graphic-scale-x').get_value()
         GObject.idle_add(self.job.plot.graphic.set_scale,sx,sy)
         GObject.idle_add(self._update_ui)
-        
+
     @callback
     def on_graphic_scale_x_changed(self,adjustment,data=None):
         sx = adjustment.get_value()
@@ -439,7 +439,7 @@ class Inkcut(Application):
         self.flash("Checking and updating...",indicator=True)
         GObject.idle_add(self.job.plot.set_auto_rotate,checkbox.get_active())
         GObject.idle_add(self._update_preview)
-        
+
     @callback
     def on_graphic_weedline_padding_changed(self,adjustment,data=None):
         if self.get_widget('graphic-properties','graphic-weedline-enable').get_active():
@@ -449,7 +449,7 @@ class Inkcut(Application):
         self.flash(msg,indicator=True)
         GObject.idle_add(self.job.plot.graphic.set_weedline_padding,self.unit_to(adjustment.get_value()))
         GObject.idle_add(self._update_graphic_ui)
-        
+
     @callback
     def on_graphic_weedline_toggled(self,checkbox,data=None):
         enabled = checkbox.get_active()
@@ -460,7 +460,7 @@ class Inkcut(Application):
         self.flash(msg,indicator=True)
         GObject.idle_add(self.job.plot.graphic.set_weedline,enabled)
         GObject.idle_add(self._update_preview)
-        
+
     @callback
     def on_graphic_mirror_x_toggled(self,checkbox,data=None):
         enabled = checkbox.get_active()
@@ -482,7 +482,7 @@ class Inkcut(Application):
         self.flash(msg,indicator=True)
         GObject.idle_add(self.job.plot.graphic.set_mirror_y,enabled)
         GObject.idle_add(self._update_preview)
-        
+
     @callback
     def on_graphic_scale_lock_toggled(self,checkbox,data=None):
         if checkbox.get_active():
@@ -501,8 +501,8 @@ class Inkcut(Application):
         self.flash("Setting graphic rotation to %s..."%degrees,indicator=True)
         GObject.idle_add(self.job.plot.graphic.set_rotation,degrees)
         GObject.idle_add(self._update_graphic_ui)
-    
-    
+
+
     # ===================================== File Menu Callbacks ===============================================
     @callback
     def on_job_review_activated(self,action,data=None):
@@ -562,14 +562,14 @@ class Inkcut(Application):
 
         # Cleanup
         os.remove(svg)
-    
+
     def on_file_save_action_activated(self,widget,data=None):
         self.flash("Saving %s into the Job database..."%(self.job.name),indicator=True)
         self.job.update_properties()
         self.get_window('inkcut').set_title("%s - Inkcut"%self.job.name)
         self.session.commit()
         GObject.timeout_add(1000,self.flash,"")
-        
+
     def create_job(self,filename,**kwargs):
         """Create a job and try to set the source. Returns bool success."""
         job = Job(**kwargs)
@@ -645,8 +645,13 @@ class Inkcut(Application):
             GObject.idle_add(self.create_job,filename)
         dialog.destroy()
 
+    def on_file_exit(self,widget):
+        # Kill GTK window
+        Gtk.main_quit()
+        # Should follow procedures in __init__ to kill
+
     # ===================================== Updating UI ===============================================
-    
+
     def _update_sensitivity(self):
         """ Set's the senstivity to widgets based on the if a Job exists.  """
         if self.job is None:
@@ -661,15 +666,15 @@ class Inkcut(Application):
         self._update_sensitivity()
         # Block all signals, because we don't want them to be called while updating values
         self._flags['block_callbacks'] = True
-            
+
         self._update_graphic_ui(preview=False)
         self._update_plot_ui(preview=False)
 
         # Unblock all signals, because we don't want them to be called while updating values
         self._flags['block_callbacks'] = False
-        
+
         self._update_preview()
-    
+
     def _update_graphic_ui(self,preview=True):
         """ Update all the Graphic Related widgets... and the preview."""
         adjustment = self.get_widget('graphic-properties','graphic-width')
@@ -699,7 +704,7 @@ class Inkcut(Application):
         adjustment.set_value(self.unit_from(self.job.plot.get_position()[1]))
         if preview:
             self._update_preview()
-        
+
     def _update_preview(self):
         """ Refreshes the preview """
         tmp = tempfile.NamedTemporaryFile(suffix=".svg",delete=False)
@@ -718,7 +723,7 @@ class Inkcut(Application):
         log.info(msg)
         if duration>0:
             GObject.timeout_add(duration*1000,self.flash,"")
-            
+
         statusbar = self.get_widget('inkcut','statusbar')
         if context_id is None:
             context_id = statusbar.get_context_id(msg)
@@ -746,7 +751,7 @@ class Inkcut(Application):
         dialog.destroy()
 
 
-    
+
     # ===================================== Material Menu Callbacks ===============================================
     @callback
     def on_material_changed(self,combobox,data=None):
@@ -754,7 +759,7 @@ class Inkcut(Application):
             self.flash("Updating the material settings...",indicator=True)
             GObject.idle_add(self.job.set_material,self.get_material())
             GObject.idle_add(self._update_ui)
-            
+
     def on_material_add_activated(self,window,data=None):
         """ Display the material properties dialog for a new material """
         MaterialPropertiesDialog(app=self,action='add')
@@ -793,7 +798,7 @@ class Inkcut(Application):
         active = combobox.get_active()
         if active >= 0:
             acitve = liststore[active][0]
-        
+
         # Rebuild the model
         materials = self.session.query(Material).all()
         liststore.clear()
@@ -803,7 +808,7 @@ class Inkcut(Application):
                 active = len(liststore)
         combobox.set_active(active)
 
-    # ===================================== Common Callbacks ===============================================    
+    # ===================================== Common Callbacks ===============================================
     def gtk_main_quit(self, window):
         """ Quit the application """
         Gtk.main_quit()
@@ -830,7 +835,7 @@ class Inkcut(Application):
             if m is None:
                 m = self.session.query(Material).first()
             return m
-            
+
     def unit_to(self,value):
         """ Converts the given units from user units to the current application default. """
         return UNITS[config.get('Inkcut','default_units')]*value
@@ -867,7 +872,7 @@ class MaterialPropertiesDialog():
                 self.app.session.add(material)
                 # Change the form slightly..
                 self.ui['ok'].set_label('gtk-add')
-                
+
             # General Tab
             if material.name:
                 self.ui['name'].set_text(str(material.name))
@@ -897,7 +902,7 @@ class MaterialPropertiesDialog():
                 self.ui['force'].set_value(material.force)
             else:
                 self.ui['use-material'].set_active(False)
-                
+
             self.material = material
             dialog = self.ui['dialog1']
             builder.connect_signals(self)
@@ -906,17 +911,17 @@ class MaterialPropertiesDialog():
                 self.ui['apply'].hide()
                 self.ui['delete'].hide()
             dialog.run() # throw away response
-            
+
 
         # General Tab
         def on_name_changed(self,widget,data=None):
             self.material.name = widget.get_text()
             self.ui['apply'].set_sensitive(True)
-                
+
 
         def on_cost_changed(self,adjustment,data=None):
             self.material.cost = adjustment.get_value()
-            self.ui['apply'].set_sensitive(True)    
+            self.ui['apply'].set_sensitive(True)
 
         def on_color_changed(self,widget,data=None):
             val = widget.get_text()
@@ -939,11 +944,11 @@ class MaterialPropertiesDialog():
         def on_width_changed(self,adjustment,data=None):
             self.material.width = adjustment.get_value()
             self.ui['apply'].set_sensitive(True)
-                
+
         def on_length_changed(self,adjustment,data=None):
             self.material.length = adjustment.get_value()
             self.ui['apply'].set_sensitive(True)
-        
+
         def on_roll_toggled(self,checkbox):
             if checkbox.get_active():
                 self.material.length = None
@@ -978,7 +983,7 @@ class MaterialPropertiesDialog():
         def on_velocity_changed(self,adjustment,data=None):
             self.material.velocity = adjustment.get_value()
             self.ui['apply'].set_sensitive(True)
-        
+
         # Dialog buttons
         def on_close_clicked(self,button=None,data=None):
             # Cancels any changes not applied
@@ -1030,19 +1035,15 @@ class MaterialPropertiesDialog():
             if response == Gtk.ResponseType.YES:
                 self.app.on_material_delete_activated(button,id=self.material.id)
                 self.ui['dialog1'].destroy()
-        
+
 
 if __name__ == "__main__":
     # Get command line args like filename and list of selected nodes
     parser = argparse.ArgumentParser(description='A tool to generate plots from vector graphics and send them to a cutting or plotting device.')
     parser.add_argument('-o', dest='filename',type=str,help='Absolute path of a file to open')
     args = parser.parse_args()
-    
+
     # Start the App
     app = Inkcut()
     app.run(filename=args.filename)
     sys.exit(0)
-    
-        
-    
-
